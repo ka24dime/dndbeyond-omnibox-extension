@@ -1,0 +1,10 @@
+{
+    "name": "D&D Beyond Omnibox Helper",
+    "version": "1.0",
+    "omnibox": { "keyword" : "dnd" },
+    "background": {
+        "persistent": false,
+        "scripts": ["background.js"]
+    },
+    "manifest_version": 2
+}
