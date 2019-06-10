@@ -14,39 +14,30 @@ chrome.omnibox.onInputChanged.addListener(function(text,suggest) {
 
 chrome.omnibox.onInputChanged.addListener(function(text,suggest) {
     var suggestions = [];
-    //text must include a space, if it does, grab the chars up to the first space and see if they are contained in 'spells'
-    var text_parts = text.split(' ');
-    var trailing_space_regex = /\s$/;
-    if (text_parts.length > 1 && 'spells'.includes(text_parts[0]) && !(trailing_space_regex.exec(text))) {
-        console.log('watchSpells sees category: "' + text_parts[0] +'"');
-        var current_filter = text_parts[text_parts.length]
+    var category = parseCategory(text);
+    if ('spells'.includes(parseCategory(text))) {
+        console.log('watchSpells sees category: "' + category +'"');
+        var current_entry = parseLastFilter(text);
         var spell_filters = ["class", "search"];
-        var filter_text = text.substr(text.lastIndexOf(' ') + 1);
-        var string_base = text.substring(0, text.lastIndexOf(' ') + 1);
-        console.log('filter text: "' + filter_text + '"');
-        spell_filters.forEach(function(filter,index,arr) {
-            if (filter.includes(filter_text) || filter_text === '') {
-                console.log('add spell filter "' + filter + '"');
-                suggestions.push({content: string_base + filter, description: "filter by " + filter});
-            }
-        });
-        var class_regex = /(class|cl|c)\s$/;
-        var filter_by_class = class_regex.exec(text);
-        if (filter_by_class) {
-            var class_filter_regex = /(class|cl|c)\s(\w+)/;
-            var match = class_filter_regex.exec(text);
-            var classes = ["bard", "cleric", "druid", "paladin", "ranger", "sorcerer", "warlock", "wizard"];
-            var class_text = '';
-            if (match && match.length > 1) {
-                console.log('class match "' + match[2] +'"');
-                class_text = match[2];
-            }
-            classes.forEach(function(class_name,index,arr) {
-                if (class_name.includes(class_text) || class_text === '') {
-                    console.log('add suggestion "' + class_name + '"');
-                    suggestions.push({content: string_base + class_name, description: "class " + class_name});
+        console.log(current_entry);
+        if (!current_entry.filter_complete) {
+            spell_filters.forEach(function(filter,index,arr) {
+                if (filter.includes(current_entry.filter) || current_entry.filter === '') {
+                    console.log('add spell filter "' + filter + '"');
+                    suggestions.push({content: current_entry.string_base + filter, description: "filter by " + filter});
                 }
             });
+        } else {
+            if ('class'.includes(current_entry.filter)) {
+                var classes = ["bard", "cleric", "druid", "paladin", "ranger", "sorcerer", "warlock", "wizard"];
+                var class_text = current_entry.value;
+                classes.forEach(function(class_name,index,arr) {
+                    if (class_name.includes(class_text) || class_text === '') {
+                        console.log('add suggestion "' + class_name + '"');
+                        suggestions.push({content: current_entry.string_base + class_name, description: "class " + class_name});
+                    }
+                });
+            }
         }
     }
     suggest(suggestions);
@@ -163,6 +154,50 @@ function buildSpellURL(params) {
     return spell_prefix + class_filter + "&" + search_filter;
 }
 
-function filterOrValue(text) {
-    
+function parseLastFilter(text) {
+    var text_parts = text.split(' ');
+    var return_obj = new Object();
+    console.log('text is: "' + text + '"');
+    console.log('array length: ' + text_parts.length);
+    if (text_parts.length > 2) {
+        var text_base_arr = text_parts;
+        text_base_arr.pop;
+        var text_base = text_base_arr.join(' ');
+        return_obj.input_base = text_base;
+        if (text_parts.length % 2) {
+            return_obj.filter = text_parts[text_parts.length - 1];
+            return_obj.filter_complete = inputComplete(text);
+            if (return_obj.filter_complete) {
+                return_obj.value = '';
+                return_obj.value_complete = false;
+            }
+        } else {
+            return_obj.filter = text_parts[text_parts.length - 1];
+            return_obj.value = text_parts[text_parts.length - 2];
+            return_obj.filter_complete = true;
+            return_obj.value_complete = inputComplete(text);
+        }
+    } else {
+        return_obj.filter = '';
+        return_obj.filter_complete = false;
+    }
+    return return_obj;
+}
+
+function inputComplete(text) {
+    var trailing_regex = /\s$/;
+    if (trailing_regex.exec(text)) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+function parseCategory(text) {
+    var text_parts = text.split(' ');
+    if (text_parts.length > 1 && inputComplete(text)) {
+        return text_parts[0];
+    } else {
+        return false;
+    }
 }
