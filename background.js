@@ -48,42 +48,26 @@ chrome.omnibox.onInputEntered.addListener(
         console.log('inputEntered: ' + text);
         var url_base = 'https://www.dndbeyond.com/';
         var params = text.split(' ');
-        var resource = params.shift();
+        var category = params.shift();
         var url_suffix = '';
 
-        switch (resource) {
-            case 's':
-            case 'sp':
-            case 'spell':
-                url_suffix = buildSpellURL(params);
-                break;
-            case 'r':
-            case 'race':
-                url_suffix = "races/" + params;
-                break;
-            case 'c':
-            case 'class':
-                url_suffix = "classes/" + params;
-                break;
-            case 'b':
-            case 'bg':
-            case 'background':
-                url_suffix = "backgrounds?filter-name=" + params;
-                break;
-            case 'm':
-            case 'mon':
-            case 'monster':
-                url_suffix = "monsters?filter-search=" + params;
-                break;
-            case 'i':
-            case 'item':
-                url_suffix = "equipment?filter-search=" + params;
-                break;
-            case 'f':
-            case 'feat':
-                url_suffix = "feats?filter-name=" + params;
-                break;
+        if ('spells'.startsWith(category)) {
+            url_suffix = buildSpellURL(params.shift());
+        } else if ('races'.startsWith(category)) {
+            url_suffix = "races/" + params.shift();
+        } else if ('classes'.startsWith(category)) {
+            var class_search = parseClass(params.shift());
+            url_suffix = "classes/" + class_search.class_name;
+        } else if ('backgrounds'.startsWith(category)) {
+            url_suffix = "backgrounds?filter-name=" + params.shift();
+        } else if ('monsters'.startsWith(category)) {
+            url_suffix = "monsters?filter-search=" + params.shift();
+        } else if ('items'.startsWith(category) || 'equipment'.startsWith(category)) {
+            url_suffix = "equipment?filter-search=" + params.shift();
+        } else if ('feats'.startsWith(category)) {
+            url_suffix = "feats?filter-name=" + params.shift();
         }
+
         console.log("moving to " + url_base + url_suffix);
         chrome.tabs.update({ url: url_base + url_suffix });
     }
@@ -92,66 +76,26 @@ chrome.omnibox.onInputEntered.addListener(
 
 function buildSpellURL(params) {
     var spell_prefix = 'spells?';
+    var class_search = new Object();
+    var search_text = '';
+    var level = '';
     while (params.length > 0) {
-        var category = params.shift();
-        var class_to_search = 0;
-        var search_text = '';
-        switch (category) {
-            case 'c':
-            case 'cl':
-            case 'class':
-                var class_name = params.shift();
-                switch (class_name) {
-                    case 'b':
-                    case 'bard':
-                        class_to_search = 1;
-                        break;
-                    case 'c':
-                    case 'cleric':
-                        class_to_search = 2;
-                        break;
-                    case 'd':
-                    case 'druid':
-                        class_to_search = 3;
-                        break;
-                    case 'p':
-                    case 'paladin':
-                        class_to_search = 4;
-                        break;
-                    case 'r':
-                    case 'ranger':
-                        class_to_search = 5;
-                        break;
-                    case 's':
-                    case 'sorcerer':
-                        class_to_search = 6;
-                        break;
-                    case 'wa':
-                    case 'war':
-                    case 'warlock':
-                        class_to_search = 7;
-                        break;
-                    case 'wi':
-                    case 'wiz':
-                    case 'wizard':
-                        class_to_search = 8;
-                        break;
-                    default:
-                        class_to_search = 0;
-                }
-                break;
-            case 's':
-            case 'search':
-                search_text = params.shift();
-                break;
-            default:
-                search_text = '';
+        var category_text = params.shift();
+        if ('class'.startsWith(category_text)) {
+            var class_text = params.shift();
+            class_search = parseClass(class_text);
+        } else if ('level'.startsWith(category_text)) {
+            level = params.shift();
+        } else if ('search'.startsWith(category_text)) {
+            search_text = params.shift();
         }
     }
 
-    var class_filter = 'filter-class=' + class_to_search;
+    var class_filter = 'filter-class=' + class_search.class_integer;
     var search_filter = 'filter-search=' + search_text;
-    return spell_prefix + class_filter + "&" + search_filter;
+    var level_filter = 'filter-level=' + level;
+    var url_return = spell_prefix + class_filter + '&' + search_filter + '&' + level_filter;
+    return url_return;
 }
 
 function parseLastFilter(text) {
@@ -200,4 +144,39 @@ function parseCategory(text) {
     } else {
         return false;
     }
+}
+
+function parseClass(text) {
+    var return_obj = new Object();
+
+    if ('bard'.startsWith(text)) {
+        return_obj.class_integer = 1;
+        return_obj.class_name = 'bard';
+    } else if ('cleric'.startsWith(text)) {
+        return_obj.class_integer = 2;
+        return_obj.class_name = 'cleric';
+    } else if ('druid'.startsWith(text)) {
+        return_obj.class_integer = 3;
+        return_obj.class_name = 'druid';
+    } else if ('paladin'.startsWith(text)) {
+        return_obj.class_integer = 4;
+        return_obj.class_name = 'paladin';
+    } else if ('ranger'.startsWith(text)) {
+        return_obj.class_integer = 5;
+        return_obj.class_name = 'ranger';
+    } else if ('sorcerer'.startsWith(text)) {
+        return_obj.class_integer = 6;
+        return_obj.class_name = 'sorcerer';
+    } else if ('warlock'.startsWith(text)) {
+        return_obj.class_integer = 7;
+        return_obj.class_name = 'warlock';
+    } else if ('wizard'.startsWith(text)) {
+        return_obj.class_integer = 8;
+        return_obj.class_name = 'wizard';
+    } else {
+        return_obj.class_integer = 0;
+        return_obj.class_name = 'none';
+    }
+
+    return return_obj;
 }
